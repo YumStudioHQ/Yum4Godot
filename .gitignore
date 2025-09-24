@@ -1,0 +1,16 @@
+# Ignore imported resources. These will make you
+# need to import resources by your own!
+*.uid
+
+# Ignore IDE/OS specific files
+*.DS_Store
+.vscode/
+.idea/
+.vs/
+
+# Ignore temporal files
+*.tmp
+*.temp
+
+# Ignore our lazy devs' files...
+.todo/
