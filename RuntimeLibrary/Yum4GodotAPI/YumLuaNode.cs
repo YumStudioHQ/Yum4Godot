@@ -94,7 +94,7 @@ public partial class YumLuaNode : Node
     .ToList();
 
     foreach (var node in nodeTypes) NodeReflection[node.Name] = node;
-    
+
     int code = localLuaState.Load(CodePath, true);
 
     if (code != 0)
@@ -134,6 +134,7 @@ public partial class YumLuaNode : Node
     localLuaState.Load($"{ClassName}:set({uidOfThis})\n{ClassName}:_ready()");
   }
 
+#if false
   public override void _EnterTree()
   {
     localLuaState.Load($"{ClassName}:_enter_tree()");
@@ -158,13 +159,13 @@ public partial class YumLuaNode : Node
   {
     localLuaState.Load($"{ClassName}:_notification({what})");
   }
-
+#endif
 
   private void WriteE(string from, string what)
   {
     var s = $"err: {from}: {what}";
     if (MakeErrorsAsFatal)
-      throw new Exception(s) {};
+      throw new Exception(s) { };
     if (PrintWarnings)
       GD.PushError(s);
   }
@@ -173,7 +174,7 @@ public partial class YumLuaNode : Node
   {
     var s = $"warn: {from}: {what}";
     if (MakeWarningsAsFatal)
-      throw new Exception(s) {};
+      throw new Exception(s) { };
     if (PrintWarnings)
       if (MakeWarningsAsErrors) GD.PushError(s);
       else GD.PushWarning(s);
@@ -291,7 +292,7 @@ public partial class YumLuaNode : Node
         var key = args[0].AsString();
         if (NodeReflection.TryGetValue(key, out Type value))
         {
-          var name = (args.Count >= 2 && args[1].IsString ) ? args[1].AsString() : $"{value.Name}_{GlobalYGManager.GetUID()}";
+          var name = (args.Count >= 2 && args[1].IsString) ? args[1].AsString() : $"{value.Name}_{GlobalYGManager.GetUID()}";
           var instance = (Node)Activator.CreateInstance(value)!;
           var uid = GlobalYGManager.GetUID();
           instance.Name = name;
@@ -361,6 +362,42 @@ public partial class YumLuaNode : Node
 
     return ["<null>"];
   }
+
+  [LuaApi("_Node", "connect")]
+  private YumVector CBL_connect(YumVector args)
+  {
+    if (args.Count >= 3 && args[0].IsInt && args[1].IsString && args[2].IsString)
+    {
+      var uid = args[0].AsInt();
+      var signalName = args[1].AsString();
+      var luaCallbackName = args[2].AsString();
+
+      if (NodeHandles.TryGetValue(uid, out Node node))
+      {
+        var lambda = Callable.From((Variant callArgs) =>
+        {
+          string injection = $"{luaCallbackName}({VariantConverter.ToYumVariant(callArgs).AsLiteralValue()})";
+          localLuaState.Load(injection);
+        });
+
+        node.Connect(signalName, lambda);
+        GD.Print($"Connected {signalName} -> {luaCallbackName}");
+      }
+      else
+      {
+        WriteE(nameof(CBL_connect), $"No node with UID {uid}");
+      }
+    }
+    else
+    {
+      WriteW(nameof(CBL_connect), $"Invalid args: {args.Format(", ")}");
+    }
+
+    return [];
+  }
+
+
+
 
   #endregion
 }

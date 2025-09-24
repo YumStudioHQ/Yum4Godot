@@ -3,6 +3,7 @@ local Godot = {}
 ---@class _Node
 _Node = {}
 _Node.INVALID_UID = 0
+Godot.INVALID_UID = _Node.INVALID_UID
 
 ---@param name string
 ---@return integer
@@ -26,7 +27,6 @@ function _Node.name(uid)
   return "<err>"
 end
 
-
 ---@param type string
 ---@param name string?
 ---@return integer
@@ -41,6 +41,13 @@ end
 function _Node.add_children(uid, ...)
   return 0
 end
+
+---connects a signal to the given callback
+---@param uid integer
+---@param signal string
+---@param callback string
+function _Node.connect(uid, signal, callback) end
+
 
 ---@class Godot.Node
 ---@private uid integer
@@ -107,6 +114,13 @@ function Godot.Node:set(uid)
   self.uid = uid
 end
 
+---connects a signal to the given callback
+---@param signal string
+---@param callback string
+function Godot.Node:connect(signal, callback)
+  _Node.connect(self.uid, signal, callback)
+end
+
 function Godot.Node:_ready() end
 ---@param delta number
 function Godot.Node:_process(delta) end
@@ -123,9 +137,10 @@ function Godot.Node:_notification(what) end
 ---@field call fun(self: Godot.Node, mename: string, ...): any
 ---@field name fun(self: Godot.Node): string
 ---@field new fun(uid?: integer): Godot.Node
----@field set fun(uid: integer)
----@field get fun(): integer
----@field add_children fun(...): integer
+---@field set fun(self: Godot.Node, uid: integer)
+---@field get fun(self: Godot.Node): integer
+---@field add_children fun(self: Godot.Node, ...): integer
+---@field connect fun(self: Godot.Node, signal: string, callback: string)
 
 ---prints given arguments to Godot's output
 function Godot.print(...) end

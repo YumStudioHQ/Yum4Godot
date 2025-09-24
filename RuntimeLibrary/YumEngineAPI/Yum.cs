@@ -113,6 +113,12 @@ namespace Yum4Godot.RuntimeLibrary.YumEngineAPI
       return "<nil>";
     }
 
+    public string AsLiteralValue()
+    {
+      if (IsString) return $"\"{AsString()}\"";
+      return ToString();
+    }
+
     public void Dispose()
     {
       if (Handle != IntPtr.Zero)
