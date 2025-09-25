@@ -10,35 +10,45 @@ namespace Yum4Godot.RuntimeLibrary.Yum4GodotAPI;
 
 public class InternalLuaState
 {
-  public ulong LuaUID { get; private set; }
+  private static long _uid = (long)Time.GetUnixTimeFromSystem();
+  public static long GetUID() => _uid++;
+
+  private ulong LuaUID = 0;
+  private readonly YumSubsystem subsystem = new();
 
   public InternalLuaState()
   {
-    LuaUID = GlobalYGManager.AskLuaState();
+    LuaUID = subsystem.NewState(true);
+    if (!subsystem.Good(LuaUID)) throw new InvalidOperationException();
+  }
+
+  public void Dispose()
+  {
+    subsystem.DeleteState(LuaUID);
+    subsystem.Dispose();
   }
 
   ~InternalLuaState()
   {
-    GlobalYGManager.Subsystem.DeleteState(LuaUID);
+    subsystem.DeleteState(LuaUID);
   }
 
   public YumVector Call(string name, YumVector argv)
-   => GlobalYGManager.Subsystem.Call(LuaUID, name, argv);
+   => subsystem.Call(LuaUID, name, argv);
 
   public int Load(string content, bool isFile = false)
-    => GlobalYGManager.Subsystem.Load(LuaUID, content, isFile);
+    => subsystem.Load(LuaUID, content, isFile);
 
   public void PushCallback(string name, Func<YumVector, YumVector> func, string ns = "")
-    => GlobalYGManager.Subsystem.PushCallback(LuaUID, name, func, ns);
+    => subsystem.PushCallback(LuaUID, name, func, ns);
 
   public bool HasMethod(string path)
-    => GlobalYGManager.Subsystem.HasMethod(LuaUID, path);
+    => subsystem.HasMethod(LuaUID, path);
 }
 
 [GlobalClass]
 public partial class YumLuaNode : Node
 {
-  private GlobalYGManager _YumManagerInstance;
   private readonly InternalLuaState localLuaState = new();
 
   [ExportGroup("Source code")]
@@ -52,7 +62,6 @@ public partial class YumLuaNode : Node
   [Export] private Vector3I MaximumVersion = new(2, 0, 0);
   [Export] private Vector3I RecommendedVersion = new(1, 6, 0);
   [Export] private Godot.Collections.Array<Vector3I> ExcludedVersions = [new(1, 5, 0)];
-  [Export] private bool CanSpawnStates = false;
   [Export] private bool PrintErrors = true;
   [Export] private bool PrintWarnings = true;
   [Export] private bool MakeErrorsAsFatal = true;
@@ -128,13 +137,12 @@ public partial class YumLuaNode : Node
       localLuaState.PushCallback(attr.Name, del, attr.Namespace);
     }
 
-    var uidOfThis = GlobalYGManager.GetUID();
+    var uidOfThis = InternalLuaState.GetUID();
     NodeHandles[uidOfThis] = this;
 
     localLuaState.Load($"{ClassName}:set({uidOfThis})\n{ClassName}:_ready()");
   }
 
-#if false
   public override void _EnterTree()
   {
     localLuaState.Load($"{ClassName}:_enter_tree()");
@@ -143,6 +151,7 @@ public partial class YumLuaNode : Node
   public override void _ExitTree()
   {
     localLuaState.Load($"{ClassName}:_exit_tree()");
+    localLuaState.Dispose();
   }
 
   public override void _Process(double delta)
@@ -155,11 +164,10 @@ public partial class YumLuaNode : Node
     localLuaState.Load($"{ClassName}:_physics_process({delta})");
   }
 
-  public override void _Notification(int what)
-  {
-    localLuaState.Load($"{ClassName}:_notification({what})");
-  }
-#endif
+  //public override void _Notification(int what)
+  //{
+  //  localLuaState.Load($"{ClassName}:_notification({what})");
+  //}
 
   private void WriteE(string from, string what)
   {
@@ -228,7 +236,7 @@ public partial class YumLuaNode : Node
       return [NullUID];
     }
 
-    var uid = GlobalYGManager.GetUID();
+    var uid = InternalLuaState.GetUID();
 
     try
     {
@@ -292,9 +300,9 @@ public partial class YumLuaNode : Node
         var key = args[0].AsString();
         if (NodeReflection.TryGetValue(key, out Type value))
         {
-          var name = (args.Count >= 2 && args[1].IsString) ? args[1].AsString() : $"{value.Name}_{GlobalYGManager.GetUID()}";
+          var name = (args.Count >= 2 && args[1].IsString) ? args[1].AsString() : $"{value.Name}_{InternalLuaState.GetUID()}";
           var instance = (Node)Activator.CreateInstance(value)!;
-          var uid = GlobalYGManager.GetUID();
+          var uid = InternalLuaState.GetUID();
           instance.Name = name;
           NodeHandles[uid] = instance;
           return [uid];
