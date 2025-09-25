@@ -60,7 +60,7 @@ public partial class YumLuaNode : Node
   [ExportGroup("Runtime Configuration")]
   [Export] private Vector3I MinimumVersion = new(1, 7, 0);
   [Export] private Vector3I MaximumVersion = new(2, 0, 0);
-  [Export] private Vector3I RecommendedVersion = new(1, 6, 0);
+  [Export] private Vector3I RecommendedVersion = new(1, 7, 0);
   [Export] private Godot.Collections.Array<Vector3I> ExcludedVersions = [new(1, 5, 0)];
   [Export] private bool PrintErrors = true;
   [Export] private bool PrintWarnings = true;
@@ -79,11 +79,11 @@ public partial class YumLuaNode : Node
     return base.Call(name, args);
   }
 
-  public override void _Ready()
+  private void SetUp()
   {
     if (!YumEngineRuntimeInfo.Require(MinimumVersion, MaximumVersion, [.. ExcludedVersions]))
     {
-      GD.PushWarning(
+      GD.PushError(
         new NotSupportedException(
           $"Current version: {YumEngineRuntimeInfo.VersionString()}, required (at least): {MinimumVersion}, recommended: {RecommendedVersion}"
         )
@@ -139,12 +139,17 @@ public partial class YumLuaNode : Node
 
     var uidOfThis = InternalLuaState.GetUID();
     NodeHandles[uidOfThis] = this;
+    localLuaState.Load($"{ClassName}:set({uidOfThis})");
+  }
 
-    localLuaState.Load($"{ClassName}:set({uidOfThis})\n{ClassName}:_ready()");
+  public override void _Ready()
+  {
+    localLuaState.Load($"{ClassName}:_ready()");
   }
 
   public override void _EnterTree()
   {
+    SetUp();
     localLuaState.Load($"{ClassName}:_enter_tree()");
   }
 

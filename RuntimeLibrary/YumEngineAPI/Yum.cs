@@ -13,31 +13,28 @@ namespace Yum4Godot.RuntimeLibrary.YumEngineAPI
     public static int Minor() => Native.YumEngineInfo_versionMinor();
     public static int Patch() => Native.YumEngineInfo_versionPatch();
 
-    public static bool RequireMin(int maj, int min, int patch)
+    private static int CompareVersion(int aMaj, int aMin, int aPatch, int bMaj, int bMin, int bPatch)
     {
-      var current = (Major(), Minor(), Patch());
-      var required = (maj, min, patch);
-      return current.CompareTo(required) >= 0;
+      if (aMaj != bMaj) return aMaj.CompareTo(bMaj);
+      if (aMin != bMin) return aMin.CompareTo(bMin);
+      return aPatch.CompareTo(bPatch);
     }
 
-    public static bool RequireMin(Godot.Vector3I v)
+    public static bool RequireMin(int maj, int min, int patch)
     {
-      return RequireMin(v.X, v.Y, v.Z);
+      var cmp = CompareVersion(Major(), Minor(), Patch(), maj, min, patch);
+      return cmp >= 0;
     }
+
+    public static bool RequireMin(Godot.Vector3I v) => RequireMin(v.X, v.Y, v.Z);
 
     public static bool RequireMax(int maj, int min, int patch)
     {
-      if (maj < Major()) return false;
-      if (min < Minor()) return false;
-      if (patch < Patch()) return false;
-
-      return true;
+      var cmp = CompareVersion(Major(), Minor(), Patch(), maj, min, patch);
+      return cmp <= 0;
     }
 
-    public static bool RequireMax(Godot.Vector3I v)
-    {
-      return RequireMax(v.X, v.Y, v.Z);
-    }
+    public static bool RequireMax(Godot.Vector3I v) => RequireMax(v.X, v.Y, v.Z);
 
     public static bool IsSameVersion(Godot.Vector3I v)
     {
@@ -48,7 +45,12 @@ namespace Yum4Godot.RuntimeLibrary.YumEngineAPI
     {
       if (!RequireMin(min)) return false;
       if (!RequireMax(max)) return false;
-      foreach (var exclude in excludes) if (IsSameVersion(exclude)) return false;
+
+      if (excludes != null)
+      {
+        foreach (var exclude in excludes)
+          if (IsSameVersion(exclude)) return false;
+      }
 
       return true;
     }
