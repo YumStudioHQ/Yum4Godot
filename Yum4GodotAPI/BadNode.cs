@@ -1,6 +1,6 @@
 using Godot;
 
-namespace Yum4Godot.RuntimeLibrary.Yum4GodotAPI;
+namespace Yum4Godot.Yum4GodotAPI;
 
 [GlobalClass]
 public partial class BadNode : Node

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace Yum4Godot.RuntimeLibrary.YumEngineAPI;
+namespace Yum4Godot.YumEngineAPI;
 
 public static class VariantConverter
 {

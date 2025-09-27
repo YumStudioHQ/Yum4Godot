@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace Yum4Godot.RuntimeLibrary.YumEngineAPI
+namespace Yum4Godot.YumEngineAPI
 {
   public static class YumEngineRuntimeInfo
   {

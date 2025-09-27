@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using Godot;
-using Yum4Godot.RuntimeLibrary.YumEngineAPI;
+using Yum4Godot.YumEngineAPI;
 
-namespace Yum4Godot.RuntimeLibrary.Yum4GodotAPI;
+namespace Yum4Godot.Yum4GodotAPI;
 
 public class InternalLuaState
 {
@@ -26,6 +27,12 @@ public class InternalLuaState
   {
     subsystem.DeleteState(LuaUID);
     subsystem.Dispose();
+  }
+
+  public void Reload()
+  {
+    subsystem.DeleteState(LuaUID);
+    LuaUID = subsystem.NewState();
   }
 
   ~InternalLuaState()
@@ -52,8 +59,9 @@ public partial class YumLuaNode : Node
   private readonly InternalLuaState localLuaState = new();
 
   [ExportGroup("Source code")]
-  [Export] private string CodePath = "res://relative/path/to/your/lua/file";
+  [Export] private string CodeFolder = "lua";
   [Export] private string ClassName = "ClassName";
+  [Export] public bool Enabled = true;
   [Export] private bool UseLuaStdLibrary = true; // TODO
   [Export] private bool UseYumEngineLibrary = true; // TODO
 
@@ -68,8 +76,8 @@ public partial class YumLuaNode : Node
   [Export] private bool MakeWarningsAsFatal = false;
   [Export] private bool MakeWarningsAsErrors = false;
 
-  private readonly Dictionary<long, Node> NodeHandles = [];
-  private readonly Dictionary<string, Type> NodeReflection = [];
+  private Dictionary<long, Node> NodeHandles = [];
+  private Dictionary<string, Type> NodeReflection = [];
 
   public new Variant Call(StringName name, Variant[] args)
   {
@@ -79,7 +87,7 @@ public partial class YumLuaNode : Node
     return base.Call(name, args);
   }
 
-  private void SetUp()
+  private void CheckUpVersion()
   {
     if (!YumEngineRuntimeInfo.Require(MinimumVersion, MaximumVersion, [.. ExcludedVersions]))
     {
@@ -89,29 +97,31 @@ public partial class YumLuaNode : Node
         )
       );
     }
+  }
 
+  public void Reload()
+  {
+    NodeHandles = [];
+    NodeReflection = [];
+    localLuaState.Reload();
+    SetUp();
+  }
+
+  private static List<(MethodInfo Method, LuaApiAttribute Attr)> GetApiFunctions()
+  {
     var apiFunctions = Assembly.GetExecutingAssembly()
     .GetTypes()
     .SelectMany(t => t.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public))
     .Select(m => (Method: m, Attr: m.GetCustomAttribute<LuaApiAttribute>()))
     .Where(x => x.Attr != null)
     .ToList();
+    return apiFunctions;
+  }
 
-    var nodeTypes = typeof(Node).Assembly
-    .GetTypes()
-    .Where(t => t.IsSubclassOf(typeof(Node)))
-    .ToList();
-
-    foreach (var node in nodeTypes) NodeReflection[node.Name] = node;
-
-    int code = localLuaState.Load(CodePath, true);
-
-    if (code != 0)
-    {
-      GD.PrintErr($"Cannot load Lua code, exit code: {code}");
-    }
-
-    foreach (var (method, attr) in apiFunctions)
+  private void PushApi()
+  {
+    var funcs = GetApiFunctions();
+    foreach (var (method, attr) in funcs)
     {
       var parameters = method.GetParameters();
       bool correctSignature = parameters.Length == 1 &&
@@ -136,43 +146,71 @@ public partial class YumLuaNode : Node
 
       localLuaState.PushCallback(attr.Name, del, attr.Namespace);
     }
+  }
 
+  private void ReflectionOnNodes()
+  {
+    var nodeTypes = typeof(Node).Assembly
+    .GetTypes()
+    .Where(t => t.IsSubclassOf(typeof(Node)))
+    .ToList();
+
+    foreach (var node in nodeTypes) NodeReflection[node.Name] = node;
+  }
+
+  private void LoadLuaSourceCode()
+  {
+    int code = localLuaState.Load($"{CodeFolder}/{ClassName}.lua", true);
+
+    if (code != 0)
+    {
+      throw new FileLoadException($"Cannot load Lua code, exit code: {code}");
+    }
+  }
+
+  private void MakeSelfInstanceValid()
+  {
     var uidOfThis = InternalLuaState.GetUID();
     NodeHandles[uidOfThis] = this;
-    localLuaState.Load($"{ClassName}:set({uidOfThis})");
+    if (Enabled) localLuaState.Load($"{ClassName}:set({uidOfThis})");
+  }
+
+  private void SetUp()
+  {
+    CheckUpVersion();
+    PushApi();
+    ReflectionOnNodes();
+    LoadLuaSourceCode();
+    PushApi();
+    MakeSelfInstanceValid();
   }
 
   public override void _Ready()
   {
-    localLuaState.Load($"{ClassName}:_ready()");
+    if (Enabled)localLuaState.Load($"{ClassName}:_ready()");
   }
 
   public override void _EnterTree()
   {
     SetUp();
-    localLuaState.Load($"{ClassName}:_enter_tree()");
+    if (Enabled)localLuaState.Load($"{ClassName}:_enter_tree()");
   }
 
   public override void _ExitTree()
   {
-    localLuaState.Load($"{ClassName}:_exit_tree()");
+    if (Enabled)localLuaState.Load($"{ClassName}:_exit_tree()");
     localLuaState.Dispose();
   }
 
   public override void _Process(double delta)
   {
-    localLuaState.Load($"{ClassName}:_process({delta})");
+    if (Enabled)localLuaState.Load($"{ClassName}:_process({delta})");
   }
 
   public override void _PhysicsProcess(double delta)
   {
-    localLuaState.Load($"{ClassName}:_physics_process({delta})");
+    if (Enabled)localLuaState.Load($"{ClassName}:_physics_process({delta})");
   }
-
-  //public override void _Notification(int what)
-  //{
-  //  localLuaState.Load($"{ClassName}:_notification({what})");
-  //}
 
   private void WriteE(string from, string what)
   {

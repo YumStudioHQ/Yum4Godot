@@ -1,6 +1,6 @@
 using System;
 
-namespace Yum4Godot.RuntimeLibrary.Yum4GodotAPI;
+namespace Yum4Godot.Yum4GodotAPI;
 
 [AttributeUsage(AttributeTargets.Method)]
 public class LuaApiAttribute : Attribute
