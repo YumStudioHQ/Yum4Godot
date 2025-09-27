@@ -59,6 +59,11 @@ namespace Yum4Godot.YumEngineAPI
     {
       return $"{Major()}.{Minor()}.{Patch()}";
     }
+
+    public static string WellVersionString()
+    {
+      return $"{StudioName()}.{StudioBranch()}.{VersionString()}";
+    }
   }
 
   public class YumVariant : IDisposable

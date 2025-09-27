@@ -20,7 +20,9 @@
 project.godot
 .editorconfig
 Tests/
-Yum4Godot-Tests.csproj
-Yum4Godot-Tests.sln
 libyum.dylib
 lua/
+Yum4Godot.csproj
+Yum4Godot.sln
+export_presets.cfg
+App/

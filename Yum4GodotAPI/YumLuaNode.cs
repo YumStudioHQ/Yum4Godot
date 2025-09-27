@@ -178,7 +178,6 @@ public partial class YumLuaNode : Node
   private void SetUp()
   {
     CheckUpVersion();
-    PushApi();
     ReflectionOnNodes();
     LoadLuaSourceCode();
     PushApi();
