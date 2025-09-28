@@ -26,3 +26,5 @@ Yum4Godot.csproj
 Yum4Godot.sln
 export_presets.cfg
 App/
+Build/
+libraries/

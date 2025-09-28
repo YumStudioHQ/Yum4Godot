@@ -6,14 +6,16 @@ namespace Yum4Godot.YumEngineAPI;
 internal static class Native
 {
 #if WINDOWS
-        private const string DllName = "yum.dll";
+    private const string LibName = "yum.dll";
 #elif LINUX
-        private const string DllName = "libyum.so";
-#elif OSX
-        private const string DllName = "libyum.dylib";
+    private const string LibName = "libyum.so";
+#elif OSX || GODOT_MACOS || GODOT_OSX
+    private const string LibName = "libyum.dylib";
 #else
-    private const string DllName = "yum"; // fallback
+    private const string LibName = "yum"; // fallback
 #endif
+
+    private const string DllName = $"libraries/{LibName}";
 
     // -------- Variant --------
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
@@ -128,8 +130,6 @@ internal static class Native
         YumCallback cb,
         string ns);
 
-
-
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     public static extern IntPtr YumEngineInfo_studioName();
 
@@ -154,5 +154,23 @@ internal static class Native
 
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     public static extern ulong YumEngineInfo_longVersion();
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void Yum_open_G_out([MarshalAs(UnmanagedType.LPStr)] string path);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void Yum_open_G_err([MarshalAs(UnmanagedType.LPStr)] string path);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void Yum_open_G_in([MarshalAs(UnmanagedType.LPStr)] string path);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void YumRedirectionCallback([MarshalAs(UnmanagedType.LPStr)] string str);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void Yum_redirect_G_out(YumRedirectionCallback callback);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void Yum_redirect_G_err(YumRedirectionCallback callback);
 }
 

@@ -17,9 +17,9 @@ public class InternalLuaState
   private ulong LuaUID = 0;
   private readonly YumSubsystem subsystem = new();
 
-  public InternalLuaState()
+  public InternalLuaState(bool libs = true)
   {
-    LuaUID = subsystem.NewState(true);
+    LuaUID = subsystem.NewState(libs);
     if (!subsystem.Good(LuaUID)) throw new InvalidOperationException();
   }
 
@@ -29,10 +29,10 @@ public class InternalLuaState
     subsystem.Dispose();
   }
 
-  public void Reload()
+  public void Reload(bool libs = true)
   {
     subsystem.DeleteState(LuaUID);
-    LuaUID = subsystem.NewState();
+    LuaUID = subsystem.NewState(libs);
   }
 
   ~InternalLuaState()
@@ -56,25 +56,25 @@ public class InternalLuaState
 [GlobalClass]
 public partial class YumLuaNode : Node
 {
-  private readonly InternalLuaState localLuaState = new();
+  private InternalLuaState localLuaState;
 
   [ExportGroup("Source code")]
-  [Export] private string CodeFolder = "lua";
-  [Export] private string ClassName = "ClassName";
+  [Export] public string CodeFolder = "lua";
+  [Export] public string ClassName = "ClassName";
   [Export] public bool Enabled = true;
-  [Export] private bool UseLuaStdLibrary = true; // TODO
-  [Export] private bool UseYumEngineLibrary = true; // TODO
+  [Export] public bool UseLuaStdLibrary = true;
+  [Export] public bool UseYumEngineLibrary = true; // TODO
 
   [ExportGroup("Runtime Configuration")]
-  [Export] private Vector3I MinimumVersion = new(1, 7, 0);
-  [Export] private Vector3I MaximumVersion = new(2, 0, 0);
-  [Export] private Vector3I RecommendedVersion = new(1, 7, 0);
-  [Export] private Godot.Collections.Array<Vector3I> ExcludedVersions = [new(1, 5, 0)];
-  [Export] private bool PrintErrors = true;
-  [Export] private bool PrintWarnings = true;
-  [Export] private bool MakeErrorsAsFatal = true;
-  [Export] private bool MakeWarningsAsFatal = false;
-  [Export] private bool MakeWarningsAsErrors = false;
+  [Export] public Vector3I MinimumVersion = new(1, 7, 0);
+  [Export] public Vector3I MaximumVersion = new(2, 0, 0);
+  [Export] public Vector3I RecommendedVersion = new(1, 7, 0);
+  [Export] public Godot.Collections.Array<Vector3I> ExcludedVersions = [new(1, 5, 0)];
+  [Export] public bool PrintErrors = true;
+  [Export] public bool PrintWarnings = true;
+  [Export] public bool MakeErrorsAsFatal = true;
+  [Export] public bool MakeWarningsAsFatal = false;
+  [Export] public bool MakeWarningsAsErrors = false;
 
   private Dictionary<long, Node> NodeHandles = [];
   private Dictionary<string, Type> NodeReflection = [];
@@ -103,7 +103,6 @@ public partial class YumLuaNode : Node
   {
     NodeHandles = [];
     NodeReflection = [];
-    localLuaState.Reload();
     SetUp();
   }
 
@@ -179,6 +178,8 @@ public partial class YumLuaNode : Node
   {
     CheckUpVersion();
     ReflectionOnNodes();
+    localLuaState?.Dispose();
+    localLuaState = new(UseLuaStdLibrary);
     LoadLuaSourceCode();
     PushApi();
     MakeSelfInstanceValid();
@@ -186,7 +187,7 @@ public partial class YumLuaNode : Node
 
   public override void _Ready()
   {
-    if (Enabled)localLuaState.Load($"{ClassName}:_ready()");
+    if (Enabled) localLuaState.Load($"{ClassName}:_ready()");
   }
 
   public override void _EnterTree()

@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using Godot;
 
 namespace Yum4Godot.YumEngineAPI
 {
@@ -110,7 +112,6 @@ namespace Yum4Godot.YumEngineAPI
     public static implicit operator double(YumVariant v) => v.AsFloat();
     public static implicit operator bool(YumVariant v) => v.AsBool();
     public static implicit operator string(YumVariant v) => v.AsString();
-
     public override string ToString()
     {
       if (IsInt) return AsInt().ToString();
@@ -303,6 +304,63 @@ namespace Yum4Godot.YumEngineAPI
     ~YumSubsystem()
     {
       Dispose(false);
+    }
+  }
+
+  public static class IO
+  {
+    private static Native.YumRedirectionCallback _gOutCallback;
+    private static Native.YumRedirectionCallback _gErrCallback;
+
+    public static void RedirectGOut(Action<string> action)
+    {
+      _gOutCallback = msg =>
+      {
+        try
+        {
+          if (msg != null)
+            action(msg);
+        }
+        catch (Exception ex)
+        {
+          GD.PrintErr($"[Yum IO] RedirectGOut error: {ex}");
+        }
+      };
+
+      Native.Yum_redirect_G_out(_gOutCallback);
+    }
+
+    public static void RedirectGErr(Action<string> action)
+    {
+      _gErrCallback = msg =>
+      {
+        try
+        {
+          if (msg != null)
+            action(msg);
+        }
+        catch (Exception ex)
+        {
+          GD.PrintErr($"[Yum IO] RedirectGOut error: {ex}");
+        }
+      };
+
+      Native.Yum_redirect_G_out(_gOutCallback);
+    }
+
+    public static void OpenGOut(string path)
+    {
+      Native.Yum_open_G_out(path);
+    }
+
+    public static void OpenGErr(string path)
+    {
+      Native.Yum_open_G_err(path);
+    }
+    
+    public static void OpenGIn(string path)
+    {
+      Native.Yum_open_G_in(path);
     }
   }
 }
