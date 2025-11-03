@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using Godot;
 
 namespace Yum4Godot.YumEngineAPI
@@ -345,7 +344,7 @@ namespace Yum4Godot.YumEngineAPI
         }
       };
 
-      Native.Yum_redirect_G_out(_gOutCallback);
+      Native.Yum_redirect_G_err(_gOutCallback);
     }
 
     public static void OpenGOut(string path)
