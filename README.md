@@ -1,5 +1,8 @@
 # Yum4Godot
 
+## Important — This is a public archive
+Yum4Godot is now an archive. You can use it of course, but highly deprecated since the YumEngine-v2.x release.
+
 ---
 
 # YumEngine Runtime API Documentation
